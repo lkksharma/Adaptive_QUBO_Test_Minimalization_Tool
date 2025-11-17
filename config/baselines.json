@@ -1,0 +1,21 @@
+{
+  "target_coverage": 0.8,
+  "alpha_size_penalty": 0.2,
+  "beta_size_penalty": 0.5,
+  "initial_temperature": 1.0,
+  "final_temperature": 0.001,
+  "steps": 5000,
+  "seed": 42,
+  "quantum_batch_size": 20,
+  "qaoa_maxiter": 50,
+  "qaoa_samples": 50,
+  "qaoa_layers": 2,
+  "qaoa_shots": 1000,
+  "complexity_multipliers": {
+    "isinstance": 0.5,
+    "schema": 0.3,
+    "error": 0.2
+  },
+  "description": "Default configuration for test selection algorithms"
+}
+

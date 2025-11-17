@@ -1,0 +1,380 @@
+ ================================================================================
+QUANTUM TEST SELECTION PIPELINE - USAGE GUIDE
+================================================================================
+
+OVERVIEW:
+---------
+This pipeline optimizes test suites using quantum-inspired algorithms and
+classical baselines. It selects a minimal subset of tests that achieves
+maximum branch coverage.
+
+================================================================================
+REQUIRED INPUT FORMAT
+================================================================================
+
+1. COVERAGE MATRIX (.npz file)
+   ---------------------------
+   Location: results/C_<project_name>.npz
+   
+   Format: NumPy compressed archive containing a single key 'C'
+   
+   Structure:
+     - C: numpy.ndarray with shape (N_tests, M_branches)
+     - Binary matrix where C[i,j] = 1 if test i covers branch j, 0 otherwise
+     - Data type: int (0 or 1 values only)
+   
+   Example creation:
+     import numpy as np
+     
+     # Your coverage matrix (50 tests, 100 branches)
+     C = np.array([...])  # Shape: (50, 100)
+     
+     # Ensure binary
+     C = (C > 0).astype(int)
+     
+     # Save in required format
+     np.savez('results/C_myproject.npz', C=C)
+
+2. BRANCH METADATA (Optional, branches.json)
+   -----------------------------------------
+   Location: Root directory or project-specific folder
+   
+   Format: JSON array of branch objects
+   
+   Required fields per branch:
+     - "id": string - unique identifier (e.g., "B1", "branch_42")
+     - "line": int - line number in source code
+     - "condition": string - human-readable description
+     - "expr": string - actual condition expression
+   
+   Optional fields:
+     - "complexity": string - one of ["low", "medium", "high", "very_high"]
+     - "overlap_group": string - logical grouping for analysis
+     - "criticality": float - numerical importance weight
+   
+   Example:
+     [
+       {
+         "id": "B1",
+         "line": 106,
+         "condition": "if x > 0",
+         "expr": "x > 0",
+         "complexity": "low",
+         "overlap_group": "validation"
+       },
+       ...
+     ]
+
+3. CONFIGURATION (Optional, config/baselines.json)
+   -----------------------------------------------
+   Format: JSON object with algorithm hyperparameters
+   
+   Available parameters:
+     - "target_coverage": float (0.0-1.0) - Target branch coverage ratio
+     - "alpha_size_penalty": float - SA size penalty coefficient
+     - "beta_size_penalty": float - Adaptive size penalty coefficient
+     - "initial_temperature": float - SA starting temperature
+     - "final_temperature": float - SA ending temperature
+     - "steps": int - Number of SA iterations
+     - "seed": int - Random seed for reproducibility
+   
+   Default values (config/baselines.json):
+     {
+       "target_coverage": 0.8,
+       "alpha_size_penalty": 0.2,
+       "beta_size_penalty": 0.5,
+       "initial_temperature": 1.0,
+       "final_temperature": 0.001,
+       "steps": 5000,
+       "seed": 42
+     }
+
+================================================================================
+INSTALLATION
+================================================================================
+
+1. Install required packages:
+   
+   pip install -r requirements.txt
+   
+   Required packages:
+     - numpy >= 1.20.0
+     - scipy >= 1.7.0
+     - pennylane >= 0.28.0
+
+2. Optional packages (for coverage collection):
+   
+   pip install pytest coverage
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+Example 1: Quick Start with Synthetic Data
+-------------------------------------------
+# Generate synthetic coverage matrix
+python build_coverage_template.py --mode synthetic \
+    --n-tests 50 --n-branches 100 --output C_demo
+
+# Run full pipeline
+python run_full_pipeline.py --coverage results/C_demo.npz
+
+
+Example 2: Use Your Own Coverage Data
+--------------------------------------
+# Create coverage matrix from your data
+python -c "
+import numpy as np
+# Load your coverage data here
+C = your_coverage_matrix  # Shape: (N_tests, M_branches)
+np.savez('results/C_myproject.npz', C=C)
+"
+
+# Run pipeline
+python run_full_pipeline.py --coverage results/C_myproject.npz \
+    --target-coverage 0.85 --max-iterations 10
+
+
+Example 3: Run Individual Methods
+----------------------------------
+# Set coverage path
+export COVERAGE_NPZ=results/C_myproject.npz
+
+# Run Simulated Annealing only
+python basic_simulated_annealing.py
+
+# Run Adaptive Greedy only
+python basic_adaptive.py
+
+
+Example 4: Custom Configuration
+--------------------------------
+# Edit config file
+cat > config/custom.json << EOF
+{
+  "target_coverage": 0.95,
+  "alpha_size_penalty": 0.1,
+  "beta_size_penalty": 0.3,
+  "steps": 10000
+}
+EOF
+
+# Run with custom config
+python run_full_pipeline.py --coverage results/C_myproject.npz \
+    --config config/custom.json
+
+================================================================================
+OUTPUT FORMAT
+================================================================================
+
+The pipeline generates the following outputs in the results/ directory:
+
+1. baselines_sa_result.json
+   -------------------------
+   Simulated Annealing results:
+   {
+     "method": "Basic_Simulated_Annealing",
+     "coverage_ratio": 0.95,
+     "selected_count": 25,
+     "total_tests": 100,
+     "selected_indices": [0, 5, 12, ...],
+     "energy": 0.024,
+     "config": { ... }
+   }
+
+2. baselines_adaptive_result.json
+   -------------------------------
+   Adaptive Greedy results (same format as SA)
+
+3. advanced_results.json
+   ----------------------
+   Advanced QUBO results:
+   {
+     "iterations": [
+       {
+         "iteration": 1,
+         "selected_indices": [...],
+         "coverage_ratio": 0.92,
+         "energy": -245.67,
+         "selected_count": 28,
+         "method": "Advanced_QAOA"
+       },
+       ...
+     ],
+     "best_result": { ... }
+   }
+
+4. comparison.csv
+   --------------
+   Summary comparison table:
+   
+   Method,FV,Coverage,Tests
+   Basic_Simulated_Annealing,0.024,1.0,6
+   Basic_Adaptive_Greedy,0.086,0.944,3
+   Advanced_QAOA,-3.206,1.0,6
+
+================================================================================
+ALGORITHMS
+================================================================================
+
+1. Basic Simulated Annealing (SA)
+   -------------------------------
+   Objective: minimize E(x) = (1 - CR(x)) + alpha * (|x| / N)
+   where CR(x) is branch coverage ratio of selected tests
+   
+   Uses geometric cooling schedule with Metropolis acceptance criterion
+
+2. Basic Adaptive Greedy
+   ----------------------
+   Greedy selection based on marginal coverage gain per test size cost
+   Iteratively selects test with highest gain until target coverage reached
+
+3. Advanced QUBO with Quantum Annealing (5-stage)
+   -----------------------------------------------
+   Multi-stage QUBO reweighting algorithm:
+     Stage 1: Coverage Efficiency Analysis
+     Stage 2: Coverage Gap Escalation with Branch Criticality
+     Stage 3: Unexplored Test Reward Boosting
+     Stage 4: Overlap-Group Coupling Refinement
+     Stage 5: Pipeline Quality-Based Global Scaling
+   
+   Solved using QAOA (Quantum Approximate Optimization Algorithm)
+   via PennyLane quantum simulator
+
+================================================================================
+ADAPTING TO YOUR PROJECT
+================================================================================
+
+To use this pipeline with any software project:
+
+Step 1: Collect Coverage Data
+------------------------------
+Choose one of these approaches based on your programming language:
+
+  Python:
+    Use coverage.py + pytest
+    See build_coverage_template.py for example
+  
+  C/C++:
+    Use gcov with -fprofile-arcs -ftest-coverage flags
+  
+  Java:
+    Use JaCoCo and parse XML reports
+  
+  JavaScript:
+    Use Istanbul/nyc and parse JSON reports
+  
+  Other:
+    Any tool that produces test × branch coverage data
+
+Step 2: Convert to Matrix Format
+---------------------------------
+Create a script to convert your coverage data to the required format:
+
+  import numpy as np
+  
+  # Parse your coverage tool output
+  coverage_data = parse_your_coverage_format()
+  
+  # Build matrix
+  N_tests = len(tests)
+  M_branches = len(branches)
+  C = np.zeros((N_tests, M_branches), dtype=int)
+  
+  for i, test in enumerate(tests):
+      for j, branch in enumerate(branches):
+          if test_covers_branch(test, branch):
+              C[i, j] = 1
+  
+  # Save
+  np.savez('results/C_myproject.npz', C=C)
+
+Step 3: Run Pipeline
+--------------------
+  python run_full_pipeline.py --coverage results/C_myproject.npz
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Issue: "No coverage matrix found"
+Solution: Ensure your coverage matrix is saved as results/C_*.npz or
+         specify path explicitly with --coverage
+
+Issue: "Module not found: pennylane"
+Solution: Install dependencies with: pip install -r requirements.txt
+
+Issue: Quantum solver is slow or fails
+Solution: 
+  - Reduce number of test cases (pipeline automatically limits to 20)
+  - Decrease --max-iterations parameter
+  - Use fallback greedy algorithm (automatically triggered on failure)
+
+Issue: Low coverage achieved
+Solution:
+  - Verify your coverage matrix quality (check density and patterns)
+  - Lower --target-coverage threshold
+  - Increase --max-iterations for more optimization attempts
+  - Adjust penalty coefficients in config/baselines.json
+
+Issue: Out of memory
+Solution:
+  - Process coverage matrix in batches
+  - Reduce QAOA layers in quantum_annealer_simulator.py
+  - Pre-filter low-value tests before optimization
+
+================================================================================
+PERFORMANCE TIPS
+================================================================================
+
+1. For large test suites (>100 tests):
+   - Pre-filter tests with low coverage
+   - Use incremental optimization
+   - Consider parallel processing
+
+2. For many branches (>500):
+   - Quantum solving scales with variables; batching is automatic
+   - Consider hierarchical optimization (group branches)
+
+3. For CI/CD integration:
+   - Cache coverage matrices
+   - Run baselines only for quick feedback
+   - Reserve quantum optimization for periodic deep analysis
+
+4. For reproducibility:
+   - Always set seed in configuration
+   - Save full configuration with results
+   - Version control your config files
+
+================================================================================
+FILE STRUCTURE
+================================================================================
+
+quantum_test_selection_pipeline/
+├── README.md                      # Detailed documentation
+├── QUICKSTART.md                  # 5-minute quick start
+├── USAGE_GUIDE.txt               # This file
+├── requirements.txt              # Python dependencies
+├── advanced_qubo_creation.py     # 5-stage QUBO builder
+├── basic_simulated_annealing.py  # SA baseline
+├── basic_adaptive.py             # Adaptive greedy baseline
+├── quantum_annealer_simulator.py # QAOA quantum solver
+├── run_full_pipeline.py          # End-to-end orchestration
+├── build_coverage_template.py    # Coverage builder template
+├── config/
+│   └── baselines.json           # Default configuration
+├── examples/
+│   └── complete_example.py      # Full working example
+└── results/                     # Output directory
+
+================================================================================
+SUPPORT AND CONTACT
+================================================================================
+
+For questions, issues, or contributions:
+- Check README.md for detailed documentation
+- Run examples/complete_example.py for a working demonstration
+- Review build_coverage_template.py for coverage collection guidance
+
+================================================================================
+

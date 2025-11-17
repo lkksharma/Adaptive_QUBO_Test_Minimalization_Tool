@@ -1,0 +1,10 @@
+{
+  "project": "REQUESTS",
+  "source": "https://github.com/psf/requests",
+  "description": "HTTP library for Python",
+  "stars": "52000+",
+  "tests_total": 611,
+  "tests_sampled": 200,
+  "branches": 524,
+  "density": 0.1054675572519084
+}
