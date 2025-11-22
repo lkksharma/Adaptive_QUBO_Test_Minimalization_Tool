@@ -147,10 +147,12 @@ Advanced_QAOA,-3.206,1.0,6
 If you use this pipeline in research, please cite:
 ```bibtex
 @software{quantum_test_selection,
-  title={Quantum Test Selection Pipeline},
-  author={Your Name},
-  year={2024},
-  url={https://github.com/yourrepo}
+  title={An Adaptive Hybrid Quantum-Classical Framework
+for Test Suite Minimization via Quantum
+Approximate Optimization Algorithm},
+  author={Lakksh Sharma},
+  year={2025},
+  url={[https://github.com/yourrepo](https://github.com/lkksharma/Adaptive_QUBO_Test_Minimalization_Tool/)}
 }
 ```
 
