@@ -243,7 +243,9 @@ Edit `config/baselines.json`:
 
 If you use this pipeline in research, please cite:
 ```
-[Your paper/project citation here]
+L. Sharma et al. An Adaptive Hybrid Quantum-Classical Framework
+for Test Suite Minimization via Quantum
+Approximate Optimization Algorithm
 ```
 
 ## License
@@ -252,5 +254,5 @@ If you use this pipeline in research, please cite:
 
 ## Support
 
-For issues or questions, please open an issue on GitHub or contact [your contact info].
+For issues or questions, please open an issue on GitHub or contact @lkksharma.
 
